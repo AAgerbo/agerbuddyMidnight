@@ -7,7 +7,9 @@ import psutil # <-- NEW: Moved to the GUI
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(base_dir, "bots", "Fishingbuddy"))
+sys.path.append(os.path.join(base_dir, "bots", "CombatBot"))
 import fishing_bot 
+import combat_bot
 
 class BotApp:
     def __init__(self, root):
@@ -81,7 +83,7 @@ class BotApp:
 
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         
-        self.active_bot = fishing_bot.FishingBot(self.write_log)
+        self.active_bot = None
         self.bot_thread = None
 
         self.write_log("Agerbuddy Midnight started.")
@@ -155,18 +157,24 @@ class BotApp:
         selected = self.bot_var.get()
         
         if current_text == "Start":
-            if selected != "Fishingbuddy":
-                self.write_log("Only Fishingbuddy is implemented right now.")
+            # --- NEW: Dynamic Bot Routing ---
+            if selected == "Fishingbuddy":
+                self.active_bot = fishing_bot.FishingBot(self.write_log)
+            elif selected == "CombatBot":
+                self.active_bot = combat_bot.CombatBot(self.write_log)
+            else:
+                self.write_log(f"[{selected}] logic has not been implemented yet.")
                 return
 
             self.btn_start.config(text="Stop", bg="#f44336")
-            self.status_var.set("Bot is running...")
+            self.status_var.set(f"{selected} is running...")
             self.bot_thread = threading.Thread(target=self.run_bot_thread, daemon=True)
             self.bot_thread.start()
         else:
             self.btn_start.config(text="Start", bg="#4CAF50")
             self.status_var.set("Ready - Process Detected")
-            self.active_bot.stop() 
+            if self.active_bot:
+                self.active_bot.stop() 
 
     def run_bot_thread(self):
         self.active_bot.start()
