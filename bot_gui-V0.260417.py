@@ -62,7 +62,7 @@ class BotApp:
         self.btn_load = tk.Button(self.right_frame, text="Load Profile", bg=self.btn_color, fg=self.fg_color, relief=tk.FLAT)
         self.btn_load.pack(fill=tk.X, pady=2)
         
-        self.btn_settings = tk.Button(self.right_frame, text="Settings & Tools", bg=self.btn_color, fg=self.fg_color, relief=tk.FLAT)
+        self.btn_settings = tk.Button(self.right_frame, text="Settings & Tools", bg=self.btn_color, fg=self.fg_color, relief=tk.FLAT, command=self.open_active_settings)
         self.btn_settings.pack(fill=tk.X, pady=2)
 
         self.enhanced_var = tk.BooleanVar()
@@ -152,6 +152,26 @@ class BotApp:
         # Schedule this function to run again in 2000 milliseconds (2 seconds)
         self.root.after(2000, self.monitor_process)
 
+    def open_active_settings(self):
+        """Instantiates the selected bot and calls its specific settings UI."""
+        selected = self.bot_var.get()
+        
+        # Ensure we have instantiated the bot the user is currently looking at
+        if not self.active_bot or self.active_bot.name.replace(" ", "") != selected.replace(" ", ""):
+            if selected == "Fishingbuddy":
+                self.active_bot = fishing_bot.FishingBot(self.write_log)
+            elif selected == "CombatBot":
+                self.active_bot = combat_bot.CombatBot(self.write_log)
+            else:
+                self.write_log(f"No settings implemented for {selected}.")
+                return
+                
+        # Ask the bot to draw its own UI over our root window
+        if hasattr(self.active_bot, "open_settings"):
+            self.active_bot.open_settings(self.root)
+        else:
+            self.write_log(f"{selected} does not have a configurable settings menu.")
+    
     def toggle_bot(self):
         current_text = self.btn_start.cget("text")
         selected = self.bot_var.get()

@@ -1,0 +1,6 @@
+# Jupyter Notebook auto-saves
+.ipynb_checkpoints/
+
+# Python cache files (Standard practice to ignore these too!)
+__pycache__/
+*.pyc
