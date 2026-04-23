@@ -20,5 +20,6 @@
         "x_shift": 496,
         "y_shift": 499
     },
-    "highlight_hex": "#00FFFF"
+    "highlight_hex": "#00FFFF",
+    "active_profile": "paladintest01"
 }
