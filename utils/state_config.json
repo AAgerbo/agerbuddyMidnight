@@ -1,0 +1,11 @@
+{
+    "frame_config": {
+        "w_scale": 59,
+        "x_shift": 275,
+        "health_y": 637,
+        "power_y": 649,
+        "tertiary_y": 675,
+        "cam_x": 261,
+        "cam_y": 676
+    }
+}

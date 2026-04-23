@@ -9,6 +9,10 @@ import json
 import tkinter as tk
 from tkinter import ttk
 import random
+import sys
+base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(base_dir)
+from utils.player_state import GameState
 
 class CombatBot:
     """
@@ -26,6 +30,9 @@ class CombatBot:
         self.is_running = False
         self.name = "CombatBot"
         self.log = log_callback 
+
+        # Initialize the state tracker
+        self.state_tracker = GameState(self.log)
         
         # Hardware key map for the activation toggle
         self.KEY_MAP = {
@@ -232,11 +239,14 @@ class CombatBot:
             self.log(f"[{self.name}] Configuration saved! Targeting Color: {self.highlight_hex}")
             settings_win.destroy()
             
-        # --- Action Buttons ---
+        # Action Buttons
         button_frame = tk.Frame(settings_win, bg="#333333")
-        button_frame.pack(pady=15, fill=tk.X, padx=20)
+        button_frame.pack(pady=10, fill=tk.X, padx=20)
         tk.Button(button_frame, text="Save & Close", bg="#4CAF50", fg="white", command=save_and_close).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=5)
-        tk.Button(button_frame, text="Vision Test", bg="#555555", fg="white", command=self.run_vision_test).pack(side=tk.RIGHT, expand=True, fill=tk.X, padx=5)
+        tk.Button(button_frame, text="Calibrate Action Bar", bg="#555555", fg="white", command=self.run_vision_test).pack(side=tk.RIGHT, expand=True, fill=tk.X, padx=5)
+        
+        # NEW: Game State Calibration Button
+        tk.Button(settings_win, text="Calibrate Player Frames", bg="#555555", fg="white", command=self.state_tracker.run_vision_test).pack(pady=5, fill=tk.X, padx=25)
 
     def start(self):
         """
