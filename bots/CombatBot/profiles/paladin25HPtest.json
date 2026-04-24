@@ -1,0 +1,35 @@
+{
+    "profile_name": "paladin25HPtest",
+    "rules": [
+        {
+            "conditions": [
+                {
+                    "variable": "Slot",
+                    "operator": "==",
+                    "value": "3"
+                },
+                {
+                    "variable": "Health %",
+                    "operator": "<",
+                    "value": "25"
+                }
+            ],
+            "override_key": "e"
+        },
+        {
+            "conditions": [
+                {
+                    "variable": "Slot",
+                    "operator": "==",
+                    "value": "4"
+                },
+                {
+                    "variable": "Health %",
+                    "operator": "<",
+                    "value": "25"
+                }
+            ],
+            "override_key": "e"
+        }
+    ]
+}

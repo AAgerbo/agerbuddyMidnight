@@ -218,29 +218,58 @@ class CombatBot:
         tk.Button(settings_win, text="Calibrate Player Frames", bg="#555555", fg="white", command=self.state_tracker.run_vision_test).pack(pady=5, fill=tk.X, padx=25)
 
     def open_profile_builder(self, parent_window):
-        """A simple GUI to draft Multi-Condition JSON Profiles."""
+        """A GUI to draft, edit, and reorder Multi-Condition JSON Profiles."""
         b_win = tk.Toplevel(parent_window)
         b_win.title("Profile Builder")
-        b_win.geometry("450x500")
+        b_win.geometry("500x650") # Made taller and wider for the new controls
         b_win.configure(bg="#222222")
         
         tk.Label(b_win, text="Logic Rule Builder", bg="#222222", fg="#2196F3", font=("Arial", 14, "bold")).pack(pady=10)
         
-        # Name
+        current_draft_conditions = []
+        rules_list = []
+
+        # --- 1. Load Existing Profile ---
+        load_frame = tk.Frame(b_win, bg="#222222")
+        load_frame.pack(pady=5)
+        tk.Label(load_frame, text="Load Existing:", bg="#222222", fg="#aaaaaa").pack(side=tk.LEFT)
+        available_profiles = [f.replace('.json', '') for f in os.listdir(self.profiles_dir) if f.endswith('.json')]
+        load_var = tk.StringVar(value="")
+        load_cb = ttk.Combobox(load_frame, textvariable=load_var, values=available_profiles, state="readonly", width=15)
+        load_cb.pack(side=tk.LEFT, padx=10)
+
+        # --- 2. Profile Name ---
         name_frame = tk.Frame(b_win, bg="#222222")
         name_frame.pack(pady=5)
         tk.Label(name_frame, text="Profile Name:", bg="#222222", fg="white").pack(side=tk.LEFT)
         name_var = tk.StringVar()
         tk.Entry(name_frame, textvariable=name_var, width=20).pack(side=tk.LEFT, padx=10)
-        
-        current_draft_conditions = []
-        rules_list = []
 
-        # Current Draft View
-        draft_lbl = tk.Label(b_win, text="Current Rule Draft: IF [ ] THEN PRESS [ ]", bg="#333333", fg="yellow", wraplength=400)
+        # Helper to redraw the listbox when loading or reordering rules
+        def refresh_listbox():
+            listbox.delete(0, tk.END)
+            for i, rule in enumerate(rules_list):
+                cond_str = " AND ".join([f"{c['variable']} {c['operator']} {c['value']}" for c in rule['conditions']])
+                listbox.insert(tk.END, f"{i+1}. IF [ {cond_str} ] -> PRESS [ {rule['override_key']} ]")
+
+        def load_profile(event):
+            sel = load_var.get()
+            if not sel: return
+            path = os.path.join(self.profiles_dir, f"{sel}.json")
+            if os.path.exists(path):
+                with open(path, 'r') as f:
+                    data = json.load(f)
+                    name_var.set(data.get("profile_name", sel))
+                    rules_list.clear()
+                    rules_list.extend(data.get("rules", []))
+                    refresh_listbox()
+        
+        load_cb.bind("<<ComboboxSelected>>", load_profile)
+
+        # --- 3. Draft Builder ---
+        draft_lbl = tk.Label(b_win, text="Current Rule Draft: IF [ ] THEN PRESS [ ]", bg="#333333", fg="yellow", wraplength=450)
         draft_lbl.pack(fill=tk.X, padx=20, pady=10, ipady=10)
 
-        # Condition Builder
         cond_frame = tk.Frame(b_win, bg="#222222")
         cond_frame.pack(pady=5)
         
@@ -254,50 +283,90 @@ class CombatBot:
         
         val_entry = tk.Entry(cond_frame, width=5)
         val_entry.pack(side=tk.LEFT, padx=2)
-        
-        def add_condition():
-            if not val_entry.get().replace('.','',1).isdigit(): return
-            current_draft_conditions.append({
-                "variable": var_cb.get(), "operator": op_cb.get(), "value": val_entry.get()
-            })
-            update_draft_label()
-            
-        tk.Button(cond_frame, text="+ AND", bg="#555", fg="white", command=add_condition).pack(side=tk.LEFT, padx=5)
-
-        # Outcome Builder
-        out_frame = tk.Frame(b_win, bg="#222222")
-        out_frame.pack(pady=10)
-        tk.Label(out_frame, text="THEN PRESS KEY:", bg="#222222", fg="white").pack(side=tk.LEFT)
-        key_entry = tk.Entry(out_frame, width=5)
-        key_entry.pack(side=tk.LEFT, padx=10)
 
         def update_draft_label():
             cond_str = " AND ".join([f"{c['variable']} {c['operator']} {c['value']}" for c in current_draft_conditions])
             k = key_entry.get() or "?"
             draft_lbl.config(text=f"IF [ {cond_str} ] THEN PRESS [ {k} ]")
+            
+        def add_condition():
+            # Basic validation to ensure value is a number
+            if not val_entry.get().replace('.','',1).isdigit(): return
+            current_draft_conditions.append({
+                "variable": var_cb.get(), "operator": op_cb.get(), "value": val_entry.get()
+            })
+            update_draft_label()
 
+        def reset_draft():
+            current_draft_conditions.clear()
+            key_entry.delete(0, tk.END)
+            update_draft_label()
+            
+        tk.Button(cond_frame, text="+ AND", bg="#555", fg="white", command=add_condition).pack(side=tk.LEFT, padx=5)
+        tk.Button(cond_frame, text="Reset", bg="#f44336", fg="white", command=reset_draft).pack(side=tk.LEFT, padx=5)
+
+        out_frame = tk.Frame(b_win, bg="#222222")
+        out_frame.pack(pady=10)
+        tk.Label(out_frame, text="THEN PRESS KEY:", bg="#222222", fg="white").pack(side=tk.LEFT)
+        key_entry = tk.Entry(out_frame, width=5)
+        key_entry.pack(side=tk.LEFT, padx=10)
         key_entry.bind("<KeyRelease>", lambda e: update_draft_label())
 
         def save_rule():
             if not current_draft_conditions or not key_entry.get(): return
             rules_list.append({"conditions": list(current_draft_conditions), "override_key": key_entry.get()})
-            listbox.insert(tk.END, draft_lbl.cget("text"))
-            current_draft_conditions.clear()
-            key_entry.delete(0, tk.END)
-            update_draft_label()
+            refresh_listbox()
+            reset_draft() # Auto-reset the draft UI after saving
 
         tk.Button(b_win, text="Save Rule to Profile", bg="#2196F3", fg="white", command=save_rule).pack(pady=5)
 
-        # Saved Rules List
-        listbox = tk.Listbox(b_win, bg="#111", fg="white", width=60, height=6)
-        listbox.pack(pady=10)
+        # --- 4. Saved Rules List & Reordering Controls ---
+        list_frame = tk.Frame(b_win, bg="#222222")
+        list_frame.pack(pady=10, fill=tk.BOTH, expand=True, padx=20)
+        
+        listbox = tk.Listbox(list_frame, bg="#111", fg="white", height=8)
+        listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        ctrl_frame = tk.Frame(list_frame, bg="#222222")
+        ctrl_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=5)
+        
+        def move_rule_up():
+            idx = listbox.curselection()
+            if not idx: return
+            idx = idx[0]
+            if idx == 0: return # Already at top
+            rules_list[idx], rules_list[idx-1] = rules_list[idx-1], rules_list[idx]
+            refresh_listbox()
+            listbox.select_set(idx-1)
+
+        def move_rule_down():
+            idx = listbox.curselection()
+            if not idx: return
+            idx = idx[0]
+            if idx == len(rules_list) - 1: return # Already at bottom
+            rules_list[idx], rules_list[idx+1] = rules_list[idx+1], rules_list[idx]
+            refresh_listbox()
+            listbox.select_set(idx+1)
+
+        def delete_rule():
+            idx = listbox.curselection()
+            if not idx: return
+            del rules_list[idx[0]]
+            refresh_listbox()
+
+        tk.Button(ctrl_frame, text="▲", bg="#555", fg="white", command=move_rule_up).pack(fill=tk.X, pady=2)
+        tk.Button(ctrl_frame, text="▼", bg="#555", fg="white", command=move_rule_down).pack(fill=tk.X, pady=2)
+        tk.Button(ctrl_frame, text="Del", bg="#f44336", fg="white", command=delete_rule).pack(fill=tk.X, pady=10)
 
         def save_profile():
             if not name_var.get() or not rules_list: return
             with open(os.path.join(self.profiles_dir, f"{name_var.get()}.json"), 'w') as f:
                 json.dump({"profile_name": name_var.get(), "rules": rules_list}, f, indent=4)
             messagebox.showinfo("Success", "Profile Saved! You can now select it in settings.")
-            b_win.destroy()
+            
+            # Auto-update the parent window's combobox list if we created a new profile
+            if hasattr(self, 'active_profile_name'):
+                b_win.destroy()
 
         tk.Button(b_win, text="EXPORT PROFILE", bg="#4CAF50", fg="white", font=("Arial", 10, "bold"), command=save_profile).pack(pady=10)
 
